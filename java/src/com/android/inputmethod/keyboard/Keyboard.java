@@ -16,6 +16,7 @@
 
 package com.android.inputmethod.keyboard;
 
+import android.util.Log;
 import android.util.SparseArray;
 
 import com.android.inputmethod.keyboard.internal.KeyVisualAttributes;
@@ -23,6 +24,12 @@ import com.android.inputmethod.keyboard.internal.KeyboardIconsSet;
 import com.android.inputmethod.keyboard.internal.KeyboardParams;
 import com.android.inputmethod.latin.Constants;
 import com.android.inputmethod.latin.utils.CollectionUtils;
+
+//$_rbox_$_modify_$_martin.cheng_$_begin
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Collections;
+//$_rbox_$_modify_$_martin.cheng_$_end
 
 /**
  * Loads an XML description of a keyboard and stores the attributes of the keys. A keyboard
@@ -43,6 +50,46 @@ import com.android.inputmethod.latin.utils.CollectionUtils;
  * </pre>
  */
 public class Keyboard {
+    private static final String TAG = Keyboard.class.getSimpleName();
+
+    /** Some common keys code. Must be positive.
+     * These should be aligned with values/keycodes.xml
+     */
+    public static final int CODE_ENTER = '\n';
+    public static final int CODE_TAB = '\t';
+    public static final int CODE_SPACE = ' ';
+    public static final int CODE_PERIOD = '.';
+    public static final int CODE_DASH = '-';
+    public static final int CODE_SINGLE_QUOTE = '\'';
+    public static final int CODE_DOUBLE_QUOTE = '"';
+    public static final int CODE_QUESTION_MARK = '?';
+    public static final int CODE_EXCLAMATION_MARK = '!';
+    // TODO: Check how this should work for right-to-left languages. It seems to stand
+    // that for rtl languages, a closing parenthesis is a left parenthesis. Is this
+    // managed by the font? Or is it a different char?
+    public static final int CODE_CLOSING_PARENTHESIS = ')';
+    public static final int CODE_CLOSING_SQUARE_BRACKET = ']';
+    public static final int CODE_CLOSING_CURLY_BRACKET = '}';
+    public static final int CODE_CLOSING_ANGLE_BRACKET = '>';
+
+    /** Special keys code. Must be negative.
+     * These should be aligned with KeyboardCodesSet.ID_TO_NAME[],
+     * KeyboardCodesSet.DEFAULT[] and KeyboardCodesSet.RTL[]
+     */
+    public static final int CODE_SHIFT = -1;
+    public static final int CODE_SWITCH_ALPHA_SYMBOL = -2;
+    public static final int CODE_OUTPUT_TEXT = -3;
+    public static final int CODE_DELETE = -4;
+    public static final int CODE_SETTINGS = -5;
+    public static final int CODE_SHORTCUT = -6;
+    public static final int CODE_ACTION_ENTER = -7;
+    public static final int CODE_ACTION_NEXT = -8;
+    public static final int CODE_ACTION_PREVIOUS = -9;
+    public static final int CODE_LANGUAGE_SWITCH = -10;
+    public static final int CODE_RESEARCH = -11;
+    // Code value representing the code is not specified.
+    public static final int CODE_UNSPECIFIED = -12;
+
     public final KeyboardId mId;
     public final int mThemeId;
 
@@ -60,9 +107,27 @@ public class Keyboard {
     public final int mTopPadding;
     /** Default gap between rows */
     public final int mVerticalGap;
+	
 
     /** Per keyboard key visual parameters */
     public final KeyVisualAttributes mKeyVisualAttributes;
+    //$_rbox_$_modify_$ add by ljh to support remote-ctrl
+    public final int mHorizontalGap;
+    public final ArrayList<Key> mKeyList;
+    public class SortByXY implements Comparator {
+        public int compare(Object o1, Object o2) {
+            Key s1 = (Key) o1;
+            Key s2 = (Key) o2;
+            if ((s1.mY < s2.mY)
+                || ((s1.mY==s2.mY)&&(s1.mX < s2.mX)))
+                return -1;
+            if((s1.mY > s2.mY)
+                || ((s1.mY==s2.mY)&&(s1.mX > s2.mX)))
+                return 1;
+            return 0;
+        }
+    }
+//$_rbox_$_modify_$ end add by ljh to support remote-ctrl
 
     public final int mMostCommonKeyHeight;
     public final int mMostCommonKeyWidth;
@@ -74,7 +139,7 @@ public class Keyboard {
     public final int mMaxMoreKeysKeyboardColumn;
 
     /** Array of keys and icons in this keyboard */
-    private final Key[] mKeys;
+    public final Key[] mKeys;
     public final Key[] mShiftKeys;
     public final Key[] mAltCodeKeysWhileTyping;
     public final KeyboardIconsSet mIconsSet;
@@ -98,6 +163,11 @@ public class Keyboard {
         mKeyVisualAttributes = params.mKeyVisualAttributes;
         mTopPadding = params.mTopPadding;
         mVerticalGap = params.mVerticalGap;
+        //$_rbox_$_modify_$ _martin.cheng_$_begin for remote-ctrl
+        mHorizontalGap = params.mHorizontalGap;
+        mKeyList = new ArrayList(params.mKeys);
+        Collections.sort(mKeyList,new SortByXY());
+        //$_rbox_$_modify_$_martin.cheng_$_end for remote-ctrl
 
         mKeys = params.mKeys.toArray(new Key[params.mKeys.size()]);
         mShiftKeys = params.mShiftKeys.toArray(new Key[params.mShiftKeys.size()]);
@@ -125,8 +195,10 @@ public class Keyboard {
         mKeyVisualAttributes = keyboard.mKeyVisualAttributes;
         mTopPadding = keyboard.mTopPadding;
         mVerticalGap = keyboard.mVerticalGap;
-
+        mHorizontalGap = keyboard.mHorizontalGap;
+        mKeyList = keyboard.mKeyList;
         mKeys = keyboard.mKeys;
+		
         mShiftKeys = keyboard.mShiftKeys;
         mAltCodeKeysWhileTyping = keyboard.mAltCodeKeysWhileTyping;
         mIconsSet = keyboard.mIconsSet;
@@ -199,6 +271,10 @@ public class Keyboard {
         return false;
     }
 
+    public static boolean isLetterCode(final int code) {
+        return code >= CODE_SPACE;
+    }
+
     @Override
     public String toString() {
         return mId.toString();
@@ -216,5 +292,28 @@ public class Keyboard {
         final int adjustedX = Math.max(0, Math.min(x, mOccupiedWidth - 1));
         final int adjustedY = Math.max(0, Math.min(y, mOccupiedHeight - 1));
         return mProximityInfo.getNearestKeys(adjustedX, adjustedY);
+    }
+
+    public static String printableCode(final int code) {
+        switch (code) {
+        case CODE_SHIFT: return "shift";
+        case CODE_SWITCH_ALPHA_SYMBOL: return "symbol";
+        case CODE_OUTPUT_TEXT: return "text";
+        case CODE_DELETE: return "delete";
+        case CODE_SETTINGS: return "settings";
+        case CODE_SHORTCUT: return "shortcut";
+        case CODE_ACTION_ENTER: return "actionEnter";
+        case CODE_ACTION_NEXT: return "actionNext";
+        case CODE_ACTION_PREVIOUS: return "actionPrevious";
+        case CODE_LANGUAGE_SWITCH: return "languageSwitch";
+        case CODE_UNSPECIFIED: return "unspec";
+        case CODE_TAB: return "tab";
+        case CODE_ENTER: return "enter";
+        default:
+            if (code <= 0) Log.w(TAG, "Unknown non-positive key code=" + code);
+            if (code < CODE_SPACE) return String.format("'\\u%02x'", code);
+            if (code < 0x100) return String.format("'%c'", code);
+            return String.format("'\\u%04x'", code);
+        }
     }
 }

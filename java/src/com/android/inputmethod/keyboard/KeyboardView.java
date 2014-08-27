@@ -80,6 +80,7 @@ public class KeyboardView extends View {
     private final float mKeyShiftedLetterHintPadding;
     private final float mKeyTextShadowRadius;
     private final float mVerticalCorrection;
+    protected final int mMoreKeysLayout;
     private final Drawable mKeyBackground;
     private final Rect mKeyBackgroundPadding = new Rect();
 
@@ -139,6 +140,8 @@ public class KeyboardView extends View {
                 R.styleable.KeyboardView_keyTextShadowRadius, 0.0f);
         mVerticalCorrection = keyboardViewAttr.getDimension(
                 R.styleable.KeyboardView_verticalCorrection, 0.0f);
+		mMoreKeysLayout = keyboardViewAttr.getResourceId(
+                R.styleable.KeyboardView_moreKeysLayout, 0);
         keyboardViewAttr.recycle();
 
         final TypedArray keyAttr = context.obtainStyledAttributes(attrs,

@@ -66,6 +66,8 @@
 
         <!-- Amount to offset the touch Y coordinate by, for bias correction. -->
         <attr name="verticalCorrection" format="dimension" />
+        <!-- Layout resource for more keys panel -->
+        <attr name="moreKeysLayout" format="reference" />
     </declare-styleable>
 
     <declare-styleable name="MainKeyboardView">
@@ -95,12 +97,16 @@
         <attr name="slidingKeyInputPreviewWidth" format="dimension" />
         <attr name="slidingKeyInputPreviewBodyRatio" format="integer" />
         <attr name="slidingKeyInputPreviewShadowRatio" format="integer" />
-        <!-- Key repeat start timeout -->
+
+        <attr name="longPressShiftLockTimeout" format="integer" />
+         <!-- Key repeat start timeout -->
         <attr name="keyRepeatStartTimeout" format="integer" />
         <!-- Key repeat interval in millisecond. -->
         <attr name="keyRepeatInterval" format="integer" />
-        <!-- Long press timeout of shift key to shift lock in millisecond. -->
-        <attr name="longPressShiftLockTimeout" format="integer" />
+        <!-- Long press timeout of letter key in millisecond. -->
+        <attr name="longPressKeyTimeout" format="integer" />
+        <!-- Long press timeout of shift key in millisecond. -->
+        <attr name="longPressShiftKeyTimeout" format="integer" />
         <!-- Ignore special key timeout while typing in millisecond. -->
         <attr name="ignoreAltCodeKeyTimeout" format="integer" />
         <!-- Layout resource for key press feedback.-->

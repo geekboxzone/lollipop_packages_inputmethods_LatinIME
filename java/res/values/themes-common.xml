@@ -45,6 +45,7 @@
         <item name="keyShiftedLetterHintPadding">@dimen/key_uppercase_letter_padding</item>
         <item name="keyPreviewTextRatio">@fraction/key_preview_text_ratio</item>
         <item name="verticalCorrection">@dimen/keyboard_vertical_correction</item>
+        <item name="moreKeysLayout">@layout/more_keys_keyboard</item>
         <item name="backgroundDimAlpha">128</item>
         <item name="gestureFloatingPreviewTextSize">@dimen/gesture_floating_preview_text_size</item>
         <item name="gestureFloatingPreviewTextOffset">@dimen/gesture_floating_preview_text_offset</item>
@@ -71,10 +72,13 @@
         <item name="slidingKeyInputPreviewWidth">@dimen/config_sliding_key_input_preview_width</item>
         <item name="slidingKeyInputPreviewBodyRatio">@integer/config_sliding_key_input_preview_body_ratio</item>
         <item name="slidingKeyInputPreviewShadowRatio">@integer/config_sliding_key_input_preview_shadow_ratio</item>
+
         <item name="keyRepeatStartTimeout">@integer/config_key_repeat_start_timeout</item>
         <item name="keyRepeatInterval">@integer/config_key_repeat_interval</item>
-        <item name="longPressShiftLockTimeout">@integer/config_longpress_shift_lock_timeout</item>
+        <item name="longPressKeyTimeout">@integer/config_long_press_key_timeout</item>
+        <item name="longPressShiftKeyTimeout">@integer/config_long_press_shift_key_timeout</item>
         <item name="ignoreAltCodeKeyTimeout">@integer/config_ignore_alt_code_key_timeout</item>
+        <item name="longPressShiftLockTimeout">@integer/config_longpress_shift_lock_timeout</item>
         <item name="keyPreviewHeight">@dimen/key_preview_height</item>
         <item name="keyPreviewLingerTimeout">@integer/config_key_preview_linger_timeout</item>
         <item name="moreKeysKeyboardLayout">@layout/more_keys_keyboard</item>

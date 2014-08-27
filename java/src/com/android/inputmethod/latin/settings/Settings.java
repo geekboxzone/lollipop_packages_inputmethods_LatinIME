@@ -99,6 +99,18 @@ public final class Settings implements SharedPreferences.OnSharedPreferenceChang
     public static final String PREF_SEND_FEEDBACK = "send_feedback";
     public static final String PREF_ABOUT_KEYBOARD = "about_keyboard";
 
+	//$_rbox_$_modify_$_martin.cheng_$_begin
+    public static final String PREF_SHOW_MORE_KEYS_PANEL = "show_more_keys_panel";
+    public static final String PREF_LONG_PRESS_TIMEOUT = "pref_long_press_timeout";
+    public static boolean isMoreKeysPanelEnabled(SharedPreferences prefs, Resources res) {
+        final boolean defaultShowMoreKeysPanel = res.getBoolean(
+                    R.bool.config_default_show_more_keys_panel);
+        boolean moreKeysPanelEnabled = prefs.getBoolean(
+                    Settings.PREF_SHOW_MORE_KEYS_PANEL, defaultShowMoreKeysPanel);
+        return moreKeysPanelEnabled;
+    }
+    //$_rbox_$_modify_$_martin.cheng_$_end
+
     // Emoji
     public static final String PREF_EMOJI_RECENT_KEYS = "emoji_recent_keys";
     public static final String PREF_EMOJI_CATEGORY_LAST_TYPED_ID = "emoji_category_last_typed_id";

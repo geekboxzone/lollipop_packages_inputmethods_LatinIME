@@ -1378,6 +1378,58 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         mKeyPreviewBackingView.setVisibility(isFullscreenMode() ? View.GONE : View.VISIBLE);
     }
 
+// $_rbox_$_modify_$_martin.cheng_$_begin_$ for remote controller
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        switch (keyCode) {
+        case KeyEvent.KEYCODE_ENTER:
+        case KeyEvent.KEYCODE_DPAD_CENTER:
+            if(isInputViewShown()){
+                //maybe it is to change input method
+                if(mKeyboardSwitcher.getMainKeyboardView().GetTouchEventStatus() ==-1){
+                    break;
+                }
+                return true;
+            }
+            break;
+        case KeyEvent.KEYCODE_DPAD_DOWN:
+        case KeyEvent.KEYCODE_DPAD_UP:
+        case KeyEvent.KEYCODE_DPAD_LEFT:
+        case KeyEvent.KEYCODE_DPAD_RIGHT:
+            if(isInputViewShown()){
+                return true;
+            }
+            break;
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+
+    @Override
+    public boolean onKeyUp(int keyCode, KeyEvent event) {
+        switch (keyCode) {
+        case KeyEvent.KEYCODE_DPAD_DOWN:
+        case KeyEvent.KEYCODE_DPAD_UP:
+        case KeyEvent.KEYCODE_DPAD_LEFT:
+        case KeyEvent.KEYCODE_DPAD_RIGHT:
+        case KeyEvent.KEYCODE_ENTER:
+        case KeyEvent.KEYCODE_DPAD_CENTER:
+        case KeyEvent.KEYCODE_BACK:
+            if(isInputViewShown()){
+                MainKeyboardView inputView = mKeyboardSwitcher.getMainKeyboardView();
+                if(keyCode == KeyEvent.KEYCODE_BACK){
+                    inputView.resetIrKeyState();
+                }else{
+                    inputView.SendKeyEvent2Touch(keyCode);
+					super.onKeyUp(keyCode, event);
+                    return true;
+                }
+            }
+            break;
+        }
+        return super.onKeyUp(keyCode, event);
+    }
+// $_rbox_$_modify_$_martin.cheng_$_end_$ add by lijiehong
+
     // This will reset the whole input state to the starting state. It will clear
     // the composing word, reset the last composed word, tell the inputconnection about it.
     private void resetEntireInputState(final int newCursorPosition) {
@@ -3093,7 +3145,7 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         }
     }
 
-    private void hapticAndAudioFeedback(final int code, final int repeatCount) {
+    public void hapticAndAudioFeedback(final int code, final int repeatCount) {
         final MainKeyboardView keyboardView = mKeyboardSwitcher.getMainKeyboardView();
         if (keyboardView != null && keyboardView.isInSlidingKeyInput()) {
             // No need to feedback while sliding input.
@@ -3131,7 +3183,8 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
     // Callback of the {@link KeyboardActionListener}. This is called when a key is released;
     // press matching call is {@link #onPressKey(int,int,boolean)} above.
     @Override
-    public void onReleaseKey(final int primaryCode, final boolean withSliding) {
+    public void 
+    onReleaseKey(final int primaryCode, final boolean withSliding) {
         mKeyboardSwitcher.onReleaseKey(primaryCode, withSliding);
 
         // If accessibility is on, ensure the user receives keyboard state updates.
@@ -3145,30 +3198,6 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
                 break;
             }
         }
-    }
-
-    // Hooks for hardware keyboard
-    @Override
-    public boolean onKeyDown(final int keyCode, final KeyEvent event) {
-        if (!ProductionFlag.IS_HARDWARE_KEYBOARD_SUPPORTED) return super.onKeyDown(keyCode, event);
-        // onHardwareKeyEvent, like onKeyDown returns true if it handled the event, false if
-        // it doesn't know what to do with it and leave it to the application. For example,
-        // hardware key events for adjusting the screen's brightness are passed as is.
-        if (mEventInterpreter.onHardwareKeyEvent(event)) {
-            final long keyIdentifier = event.getDeviceId() << 32 + event.getKeyCode();
-            mCurrentlyPressedHardwareKeys.add(keyIdentifier);
-            return true;
-        }
-        return super.onKeyDown(keyCode, event);
-    }
-
-    @Override
-    public boolean onKeyUp(final int keyCode, final KeyEvent event) {
-        final long keyIdentifier = event.getDeviceId() << 32 + event.getKeyCode();
-        if (mCurrentlyPressedHardwareKeys.remove(keyIdentifier)) {
-            return true;
-        }
-        return super.onKeyUp(keyCode, event);
     }
 
     // onKeyDown and onKeyUp are the main events we are interested in. There are two more events

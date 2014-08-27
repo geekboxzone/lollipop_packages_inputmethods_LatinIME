@@ -16,11 +16,11 @@
 
 package com.android.inputmethod.keyboard;
 
+import static com.android.inputmethod.keyboard.Keyboard.CODE_OUTPUT_TEXT;
+import static com.android.inputmethod.keyboard.Keyboard.CODE_SHIFT;
+import static com.android.inputmethod.keyboard.Keyboard.CODE_SWITCH_ALPHA_SYMBOL;
+import static com.android.inputmethod.keyboard.Keyboard.CODE_UNSPECIFIED;
 import static com.android.inputmethod.keyboard.internal.KeyboardIconsSet.ICON_UNDEFINED;
-import static com.android.inputmethod.latin.Constants.CODE_OUTPUT_TEXT;
-import static com.android.inputmethod.latin.Constants.CODE_SHIFT;
-import static com.android.inputmethod.latin.Constants.CODE_SWITCH_ALPHA_SYMBOL;
-import static com.android.inputmethod.latin.Constants.CODE_UNSPECIFIED;
 
 import android.content.res.Resources;
 import android.content.res.TypedArray;
@@ -58,12 +58,12 @@ public class Key implements Comparable<Key> {
     /**
      * The key code (unicode or custom code) that this key generates.
      */
-    private final int mCode;
+    public final int mCode;
 
     /** Label to display */
-    private final String mLabel;
+    public final String mLabel;
     /** Hint label to display on the key in conjunction with the label */
-    private final String mHintLabel;
+    public final String mHintLabel;
     /** Flags of the label */
     private final int mLabelFlags;
     private static final int LABEL_FLAGS_ALIGN_LEFT = 0x01;
@@ -95,18 +95,24 @@ public class Key implements Comparable<Key> {
     private final int mIconId;
 
     /** Width of the key, not including the gap */
-    private final int mWidth;
+    public final int mWidth;
     /** Height of the key, not including the gap */
-    private final int mHeight;
+    public final int mHeight;
+//$_rbox_$_modify_$_lijiehong_$_begin_$
+    /** The horizontal gap around this key */
+    public final int mHorizontalGap;
+    /** The vertical gap below this key */
+    public final int mVerticalGap;
+//$_rbox_$_modify_$_lijiehong_$_end_$
     /** X coordinate of the key in the keyboard layout */
-    private final int mX;
+    public final int mX;
     /** Y coordinate of the key in the keyboard layout */
-    private final int mY;
+    public final int mY;
     /** Hit bounding box of the key */
-    private final Rect mHitBox = new Rect();
+    public final Rect mHitBox = new Rect();
 
-    /** More keys. It is guaranteed that this is null or an array of one or more elements */
-    private final MoreKeySpec[] mMoreKeys;
+    /** More keys */
+    public final MoreKeySpec[] mMoreKeys;
     /** More keys column number and flags */
     private final int mMoreKeysColumnAndFlags;
     private static final int MORE_KEYS_COLUMN_MASK = 0x000000ff;
@@ -135,7 +141,7 @@ public class Key implements Comparable<Key> {
     private static final int ACTION_FLAGS_ALT_CODE_WHILE_TYPING = 0x04;
     private static final int ACTION_FLAGS_ENABLE_LONG_PRESS = 0x08;
 
-    private final KeyVisualAttributes mKeyVisualAttributes;
+    public final KeyVisualAttributes mKeyVisualAttributes;
 
     private final OptionalAttributes mOptionalAttributes;
 
@@ -200,6 +206,12 @@ public class Key implements Comparable<Key> {
             final int iconId, final int code, final String outputText, final int x, final int y,
             final int width, final int height, final int labelFlags, final int backgroundType) {
         mHeight = height - params.mVerticalGap;
+		
+        //$_rbox_$_modify_$_martin.cheng_$_begin_$
+        mHorizontalGap = params.mHorizontalGap;
+        mVerticalGap = params.mVerticalGap;
+        //$_rbox_$_modify_$_martin.cheng_$_end_$
+		
         mWidth = width - params.mHorizontalGap;
         mHintLabel = hintLabel;
         mLabelFlags = labelFlags;
@@ -251,6 +263,11 @@ public class Key implements Comparable<Key> {
         mX = Math.round(keyXPos + horizontalGap / 2);
         mY = keyYPos;
         mWidth = Math.round(keyWidth - horizontalGap);
+		
+//$_rbox_$_modify_$_martin.cheng_$_begin_$
+        mVerticalGap = params.mVerticalGap;
+		mHorizontalGap = Math.round(horizontalGap);
+//$_rbox_$_modify_$_martin.cheng_$_end_$		
         mHitBox.set(Math.round(keyXPos), keyYPos, Math.round(keyXPos + keyWidth) + 1,
                 keyYPos + rowHeight);
         // Update row to have current x coordinate.
@@ -408,6 +425,11 @@ public class Key implements Comparable<Key> {
         // Key state.
         mPressed = key.mPressed;
         mEnabled = key.mEnabled;
+
+        //$_rbox_$_modify_$_martin.cheng_$_begin_$
+        mVerticalGap = key.mVerticalGap;
+        mHorizontalGap = key.mHorizontalGap;
+        //$_rbox_$_modify_$_martin.cheng_$_end_$	
     }
 
     private static boolean needsToUpperCase(final int labelFlags, final int keyboardElementId) {

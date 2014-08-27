@@ -144,6 +144,24 @@ public class MockKeyboardSwitcher implements KeyboardState.SwitchActions {
         return mIsInDoubleTapShiftKeyTimeout;
     }
 
+    @Override
+    public void startLongPressTimer(int code) {
+        mLongPressTimeoutCode = code;
+    }
+
+
+    @Override
+    public void cancelLongPressTimer() {
+        mLongPressTimeoutCode = 0;
+    }
+
+
+    @Override
+    public void hapticAndAudioFeedback(int code) {
+        // Nothing to do.
+    }
+
+
     public void updateShiftState() {
         mState.onUpdateShiftState(mAutoCapsState, RecapitalizeStatus.NOT_A_RECAPITALIZE_MODE);
     }

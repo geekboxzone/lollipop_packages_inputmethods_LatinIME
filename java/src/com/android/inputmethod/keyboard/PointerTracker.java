@@ -23,7 +23,13 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.MotionEvent;
 
+//$_rbox_$_modify_$_martin.cheng_$_begin
+import android.content.SharedPreferences;
+//$_rbox_$_modify_$_martin.cheng_$_end
+
+
 import com.android.inputmethod.accessibility.AccessibilityUtils;
+import com.android.inputmethod.keyboard.Keyboard;
 import com.android.inputmethod.keyboard.internal.GestureStroke;
 import com.android.inputmethod.keyboard.internal.GestureStroke.GestureStrokeParams;
 import com.android.inputmethod.keyboard.internal.GestureStrokeWithPreviewPoints;
@@ -44,7 +50,7 @@ import java.util.ArrayList;
 
 public final class PointerTracker implements PointerTrackerQueue.Element {
     private static final String TAG = PointerTracker.class.getSimpleName();
-    private static final boolean DEBUG_EVENT = false;
+    private static final boolean DEBUG_EVENT = true;
     private static final boolean DEBUG_MOVE_EVENT = false;
     private static final boolean DEBUG_LISTENER = false;
     private static boolean DEBUG_MODE = LatinImeLogger.sDBG || DEBUG_EVENT;
@@ -94,8 +100,9 @@ public final class PointerTracker implements PointerTrackerQueue.Element {
     public interface TimerProxy {
         public void startTypingStateTimer(Key typedKey);
         public boolean isTypingState();
-        public void startKeyRepeatTimer(PointerTracker tracker, int repeatCount, int delay);
+        public void startKeyRepeatTimer(PointerTracker tracker);
         public void startLongPressTimer(PointerTracker tracker, int delay);
+		public void startLongPressTimer(int code);
         public void cancelLongPressTimer();
         public void startDoubleTapShiftKeyTimer();
         public void cancelDoubleTapShiftKeyTimer();
@@ -111,9 +118,11 @@ public final class PointerTracker implements PointerTrackerQueue.Element {
             @Override
             public boolean isTypingState() { return false; }
             @Override
-            public void startKeyRepeatTimer(PointerTracker tracker, int repeatCount, int delay) {}
+            public void startKeyRepeatTimer(PointerTracker tracker) {}
             @Override
             public void startLongPressTimer(PointerTracker tracker, int delay) {}
+			@Override
+            public void startLongPressTimer(int code) {}
             @Override
             public void cancelLongPressTimer() {}
             @Override
@@ -929,6 +938,11 @@ public final class PointerTracker implements PointerTrackerQueue.Element {
             }
         }
 
+		final Key lastKey = getKeyOn(mLastX, mLastY);
+		if(null!=lastKey){
+			updateReleaseKeyGraphics(lastKey);
+		}
+
         final Key key = getKeyOn(x, y);
         mBogusMoveEventDetector.onActualDownEvent(x, y);
         if (key != null && key.isModifier()) {
@@ -959,6 +973,8 @@ public final class PointerTracker implements PointerTrackerQueue.Element {
     }
 
     private void onDownEventInternal(final int x, final int y, final long eventTime) {
+		mLastX = x;
+        mLastY = y;
         Key key = onDownKey(x, y, eventTime);
         // Sliding key is allowed when 1) enabled by configuration, 2) this pointer starts sliding
         // from modifier key, or 3) this pointer's KeyDetector always allows sliding input.
@@ -1022,7 +1038,7 @@ public final class PointerTracker implements PointerTrackerQueue.Element {
         }
     }
 
-    private void onMoveEvent(final int x, final int y, final long eventTime, final MotionEvent me) {
+    public void onMoveEvent(final int x, final int y, final long eventTime, final MotionEvent me) {
         if (DEBUG_MOVE_EVENT) {
             printTouchEvent("onMoveEvent:", x, y, eventTime);
         }
@@ -1235,7 +1251,7 @@ public final class PointerTracker implements PointerTrackerQueue.Element {
     @Override
     public void onPhantomUpEvent(final long eventTime) {
         if (DEBUG_EVENT) {
-            printTouchEvent("onPhntEvent:", mLastX, mLastY, eventTime);
+            printTouchEvent("onPhantomUpEvent:", mLastX, mLastY, eventTime);
         }
         if (isShowingMoreKeysPanel()) {
             return;
@@ -1314,7 +1330,7 @@ public final class PointerTracker implements PointerTrackerQueue.Element {
 
     private void onCancelEvent(final int x, final int y, final long eventTime) {
         if (DEBUG_EVENT) {
-            printTouchEvent("onCancelEvt:", x, y, eventTime);
+            printTouchEvent("onCancelEvent:", x, y, eventTime);
         }
 
         cancelBatchInput();
@@ -1375,33 +1391,6 @@ public final class PointerTracker implements PointerTrackerQueue.Element {
         return false;
     }
 
-    private void startLongPressTimer(final Key key) {
-        if (sInGesture) return;
-        if (key == null) return;
-        if (!key.isLongPressEnabled()) return;
-        // Caveat: Please note that isLongPressEnabled() can be true even if the current key
-        // doesn't have its more keys. (e.g. spacebar, globe key)
-        // We always need to start the long press timer if the key has its more keys regardless of
-        // whether or not we are in the sliding input mode.
-        if (mIsInSlidingKeyInput && key.getMoreKeys() == null) return;
-        final int delay;
-        switch (key.getCode()) {
-        case Constants.CODE_SHIFT:
-            delay = sParams.mLongPressShiftLockTimeout;
-            break;
-        default:
-            final int longpressTimeout = Settings.getInstance().getCurrent().mKeyLongpressTimeout;
-            if (mIsInSlidingKeyInputFromModifier) {
-                // We use longer timeout for sliding finger input started from the modifier key.
-                delay = longpressTimeout * MULTIPLIER_FOR_LONG_PRESS_TIMEOUT_IN_SLIDING_INPUT;
-            } else {
-                delay = longpressTimeout;
-            }
-            break;
-        }
-        mTimerProxy.startLongPressTimer(this, delay);
-    }
-
     private void detectAndSendKey(final Key key, final int x, final int y, final long eventTime) {
         if (key == null) {
             callListenerOnCancelInput();
@@ -1413,29 +1402,38 @@ public final class PointerTracker implements PointerTrackerQueue.Element {
         callListenerOnRelease(key, code, false /* withSliding */);
     }
 
+	//$_rbox_$_modify_$_martin.cheng_$_begin_$ 
     private void startRepeatKey(final Key key) {
-        if (sInGesture) return;
-        if (key == null) return;
-        if (!key.isRepeatable()) return;
-        // Don't start key repeat when we are in sliding input mode.
-        if (mIsInSlidingKeyInput) return;
-        final int startRepeatCount = 1;
-        mTimerProxy.startKeyRepeatTimer(this, startRepeatCount, sParams.mKeyRepeatStartTimeout);
+        if (key != null && key.isRepeatable() && !sInGesture) {
+            onRegisterKey(key);
+            mTimerProxy.startKeyRepeatTimer(this);
+        }
     }
 
-    public void onKeyRepeat(final int code, final int repeatCount) {
-        final Key key = getKey();
-        if (key == null || key.getCode() != code) {
-            mCurrentRepeatingKeyCode = Constants.NOT_A_CODE;
-            return;
+    public void onRegisterKey(final Key key) {
+        if (key != null) {
+            detectAndSendKey(key, key.mX, key.mY, SystemClock.uptimeMillis());
+            mTimerProxy.startTypingStateTimer(key);
         }
-        mCurrentRepeatingKeyCode = code;
-        mIsDetectingGesture = false;
-        final int nextRepeatCount = repeatCount + 1;
-        mTimerProxy.startKeyRepeatTimer(this, nextRepeatCount, sParams.mKeyRepeatInterval);
-        callListenerOnPressAndCheckKeyboardLayoutChange(key, repeatCount);
-        callListenerOnCodeInput(key, code, mKeyX, mKeyY, SystemClock.uptimeMillis());
     }
+	
+    public int getLongPressKeyTimeout(){
+        if(mDrawingProxy!=null)
+            return getCurrentLongPressTimeout(((MainKeyboardView)mDrawingProxy).getPreferences());
+        return 1500;//default use 1500ms
+    }
+	
+    public void startLongPressTimer(final Key key) {
+        if (key != null && key.isLongPressEnabled() && !sInGesture) {
+            int delay = getLongPressKeyTimeout();
+            mTimerProxy.startLongPressTimer(this,delay);
+        }
+    }
+
+    private int getCurrentLongPressTimeout(SharedPreferences sp) {
+        return sp.getInt(Settings.PREF_LONG_PRESS_TIMEOUT,1500);
+    }
+	//$_rbox_$_modify_$_martin.cheng_$_end_$
 
     private void printTouchEvent(final String title, final int x, final int y,
             final long eventTime) {

@@ -29,6 +29,7 @@ import android.view.inputmethod.EditorInfo;
 import com.android.inputmethod.accessibility.AccessibleKeyboardViewProxy;
 import com.android.inputmethod.compat.InputMethodServiceCompatUtils;
 import com.android.inputmethod.keyboard.KeyboardLayoutSet.KeyboardLayoutSetException;
+import com.android.inputmethod.keyboard.PointerTracker.TimerProxy;
 import com.android.inputmethod.keyboard.internal.KeyboardState;
 import com.android.inputmethod.latin.InputView;
 import com.android.inputmethod.latin.LatinIME;
@@ -223,6 +224,8 @@ public final class KeyboardSwitcher implements KeyboardState.SwitchActions {
     }
 
     public void onPressKey(final int code, final boolean isSinglePointer) {
+        mLatinIME.hapticAndAudioFeedback(code, 0);
+      
         mState.onPressKey(code, isSinglePointer, mLatinIME.getCurrentAutoCapsState());
     }
 
@@ -233,6 +236,18 @@ public final class KeyboardSwitcher implements KeyboardState.SwitchActions {
     public void onFinishSlidingInput() {
         mState.onFinishSlidingInput();
     }
+
+    // Implements {@link KeyboardState.SwitchActions}.
+    @Override
+    public void hapticAndAudioFeedback(int code) {
+        mLatinIME.hapticAndAudioFeedback(code,0);
+    }
+
+
+    public void onLongPressTimeout(int code) {
+        mState.onLongPressTimeout(code);
+    }
+
 
     // Implements {@link KeyboardState.SwitchActions}.
     @Override
@@ -322,11 +337,36 @@ public final class KeyboardSwitcher implements KeyboardState.SwitchActions {
         return keyboardView != null && keyboardView.isInDoubleTapShiftKeyTimeout();
     }
 
+    // Implements {@link KeyboardState.SwitchActions}.
+    @Override
+    public void startLongPressTimer(int code) {
+        final MainKeyboardView keyboardView = getMainKeyboardView();
+        if (keyboardView != null) {
+            final TimerProxy timer = keyboardView.getTimerProxy();
+            timer.startLongPressTimer(code);
+        }
+    }
+
+    // Implements {@link KeyboardState.SwitchActions}.
+    @Override
+    public void cancelLongPressTimer() {
+        final MainKeyboardView keyboardView = getMainKeyboardView();
+        if (keyboardView != null) {
+            final TimerProxy timer = keyboardView.getTimerProxy();
+            timer.cancelLongPressTimer();
+        }
+    }
+
+
     /**
      * Updates state machine to figure out when to automatically switch back to the previous mode.
      */
     public void onCodeInput(final int code) {
         mState.onCodeInput(code, mLatinIME.getCurrentAutoCapsState());
+    }
+
+    public boolean isInMomentarySwitchState() {
+        return mState.isInMomentarySwitchState();
     }
 
     private boolean isShowingMainKeyboard() {

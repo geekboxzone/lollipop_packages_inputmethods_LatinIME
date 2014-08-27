@@ -16,6 +16,7 @@
 
 package com.android.inputmethod.keyboard.internal;
 
+import com.android.inputmethod.keyboard.Keyboard;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -52,11 +53,15 @@ public final class KeyboardState {
         /**
          * Request to call back {@link KeyboardState#onUpdateShiftState(int, int)}.
          */
+
+        public void startLongPressTimer(int code);
+        public void cancelLongPressTimer();
         public void requestUpdatingShiftState();
 
         public void startDoubleTapShiftKeyTimer();
         public boolean isInDoubleTapShiftKeyTimeout();
         public void cancelDoubleTapShiftKeyTimer();
+		public void hapticAndAudioFeedback(int code);
     }
 
     private final SwitchActions mSwitchActions;
@@ -84,6 +89,10 @@ public final class KeyboardState {
     private boolean mPrevMainKeyboardWasShiftLocked;
     private boolean mPrevSymbolsKeyboardWasShifted;
     private int mRecapitalizeMode;
+
+    // For handling long press.
+    private boolean mLongPressShiftLockFired;
+
 
     // For handling double tap.
     private boolean mIsInAlphabetUnshiftedFromShifted;
@@ -350,6 +359,9 @@ public final class KeyboardState {
         } else if (code == Constants.CODE_SWITCH_ALPHA_SYMBOL) {
             onPressSymbol();
         } else {
+            mSwitchActions.cancelDoubleTapShiftKeyTimer();
+            mSwitchActions.cancelLongPressTimer();
+            mLongPressShiftLockFired = false;
             mShiftKeyState.onOtherKeyPressed();
             mSymbolKeyState.onOtherKeyPressed();
             // It is required to reset the auto caps state when all of the following conditions
@@ -403,6 +415,17 @@ public final class KeyboardState {
         }
         mSymbolKeyState.onRelease();
     }
+
+    public void onLongPressTimeout(int code) {
+        if (DEBUG_EVENT) {
+            Log.d(TAG, "onLongPressTimeout: code=" + Keyboard.printableCode(code) + " " + this);
+        }
+        if (mIsAlphabetMode && code == Keyboard.CODE_SHIFT) {
+            mLongPressShiftLockFired = true;
+            mSwitchActions.hapticAndAudioFeedback(code);
+        }
+    }
+
 
     public void onUpdateShiftState(final int autoCaps, final int recapitalizeMode) {
         if (DEBUG_EVENT) {
@@ -587,6 +610,12 @@ public final class KeyboardState {
             break;
         }
     }
+
+    public boolean isInMomentarySwitchState() {
+        return mSwitchState == SWITCH_STATE_MOMENTARY_ALPHA_AND_SYMBOL
+                || mSwitchState == SWITCH_STATE_MOMENTARY_SYMBOL_AND_MORE;
+    }
+
 
     private static boolean isSpaceOrEnter(final int c) {
         return c == Constants.CODE_SPACE || c == Constants.CODE_ENTER;

@@ -72,6 +72,14 @@ import com.android.inputmethod.latin.utils.ViewLayoutUtils;
 import com.android.inputmethod.research.ResearchLogger;
 
 import java.util.WeakHashMap;
+//$_rbox_$_modify_$_martin.cheng_$_begin:  for remote-ctrl
+import com.android.inputmethod.latin.settings.Settings;
+import android.content.SharedPreferences;
+import android.preference.PreferenceManager;
+import android.os.SystemClock;
+import android.view.KeyEvent;
+import java.util.List;
+//$_rbox_$_modify_$_martin.cheng_$_end add by
 
 /**
  * A view that is responsible for detecting key presses and touch movements.
@@ -192,13 +200,25 @@ public final class MainKeyboardView extends KeyboardView implements PointerTrack
         private static final int MSG_DOUBLE_TAP_SHIFT_KEY = 3;
         private static final int MSG_UPDATE_BATCH_INPUT = 4;
 
+        private final int mKeyRepeatStartTimeout;
+        private final int mKeyRepeatInterval;
+        private final int mLongPressKeyTimeout;
+        private final int mLongPressShiftKeyTimeout;
         private final int mIgnoreAltCodeKeyTimeout;
-        private final int mGestureRecognitionUpdateTime;
+        private final int mGestureRecognitionUpdateTime;		
 
         public KeyTimerHandler(final MainKeyboardView outerInstance,
                 final TypedArray mainKeyboardViewAttr) {
             super(outerInstance);
 
+            mKeyRepeatStartTimeout = mainKeyboardViewAttr.getInt(
+                    R.styleable.MainKeyboardView_keyRepeatStartTimeout, 0);
+            mKeyRepeatInterval = mainKeyboardViewAttr.getInt(
+                    R.styleable.MainKeyboardView_keyRepeatInterval, 0);
+            mLongPressKeyTimeout = mainKeyboardViewAttr.getInt(
+                    R.styleable.MainKeyboardView_longPressKeyTimeout, 0);
+            mLongPressShiftKeyTimeout = mainKeyboardViewAttr.getInt(
+                    R.styleable.MainKeyboardView_longPressShiftKeyTimeout, 0);
             mIgnoreAltCodeKeyTimeout = mainKeyboardViewAttr.getInt(
                     R.styleable.MainKeyboardView_ignoreAltCodeKeyTimeout, 0);
             mGestureRecognitionUpdateTime = mainKeyboardViewAttr.getInt(
@@ -217,10 +237,18 @@ public final class MainKeyboardView extends KeyboardView implements PointerTrack
                 startWhileTypingFadeinAnimation(keyboardView);
                 break;
             case MSG_REPEAT_KEY:
-                tracker.onKeyRepeat(msg.arg1 /* code */, msg.arg2 /* repeatCount */);
+                final Key currentKey = tracker.getKey();
+                if (currentKey != null && currentKey.mCode == msg.arg1) {
+                    tracker.onRegisterKey(currentKey);
+                    startKeyRepeatTimer(tracker, mKeyRepeatInterval);
+                }
                 break;
             case MSG_LONGPRESS_KEY:
-                keyboardView.onLongPress(tracker);
+                if (tracker != null) {
+                    keyboardView.openMoreKeysKeyboardIfRequired(tracker.getKey(), tracker);
+                } else {
+                    KeyboardSwitcher.getInstance().onLongPressTimeout(msg.arg1);
+                }
                 break;
             case MSG_UPDATE_BATCH_INPUT:
                 tracker.updateBatchInputByTimer(SystemClock.uptimeMillis());
@@ -229,16 +257,20 @@ public final class MainKeyboardView extends KeyboardView implements PointerTrack
             }
         }
 
-        @Override
-        public void startKeyRepeatTimer(final PointerTracker tracker, final int repeatCount,
-                final int delay) {
+        public void startKeyRepeatTimer(final PointerTracker tracker, final int delay) {
             final Key key = tracker.getKey();
             if (key == null || delay == 0) {
                 return;
             }
             sendMessageDelayed(
-                    obtainMessage(MSG_REPEAT_KEY, key.getCode(), repeatCount, tracker), delay);
+                    obtainMessage(MSG_REPEAT_KEY, key.getCode(), 0, tracker), delay);
         }
+
+        @Override
+        public void startKeyRepeatTimer(final PointerTracker tracker) {
+            startKeyRepeatTimer(tracker, mKeyRepeatStartTimeout);
+        }
+
 
         public void cancelKeyRepeatTimer() {
             removeMessages(MSG_REPEAT_KEY);
@@ -249,12 +281,47 @@ public final class MainKeyboardView extends KeyboardView implements PointerTrack
             return hasMessages(MSG_REPEAT_KEY);
         }
 
+    @Override
+    public void startLongPressTimer(final int code) {
+	    cancelLongPressTimer();
+	    final int delay;
+	    switch (code) {
+	      case Keyboard.CODE_SHIFT:
+		    delay = mLongPressShiftKeyTimeout;
+		  break;
+	      default:
+		    delay = 0;
+		  break;
+	   }
+	   if (delay > 0) {
+		  sendMessageDelayed(obtainMessage(MSG_LONGPRESS_KEY, code, 0), delay);
+	   }
+    }
+
+        //$_rbox_$_modify_$_martin.cheng_$_begin for moreKeysPanel
         @Override
-        public void startLongPressTimer(final PointerTracker tracker, final int delay) {
+        public void startLongPressTimer(PointerTracker tracker, int delay) {
             cancelLongPressTimer();
-            if (delay <= 0) return;
-            sendMessageDelayed(obtainMessage(MSG_LONGPRESS_KEY, tracker), delay);
+            if (tracker == null) {
+                return;
+            }
+            final Key key = tracker.getKey();
+            switch (key.mCode) {
+            case Keyboard.CODE_SHIFT:
+                delay = mLongPressShiftKeyTimeout;
+                break;
+            default:
+                if (KeyboardSwitcher.getInstance().isInMomentarySwitchState()) {
+                    delay = delay * 3;
+                }
+                break;
+            }
+            if (delay > 0) {
+                sendMessageDelayed(obtainMessage(MSG_LONGPRESS_KEY, tracker), delay);
+            }
+
         }
+//$_rbox_$_modify_$_martin.cheng_end for configure moreKeysPanel
 
         @Override
         public void cancelLongPressTimer() {
@@ -421,6 +488,13 @@ public final class MainKeyboardView extends KeyboardView implements PointerTrack
         this(context, attrs, R.attr.mainKeyboardViewStyle);
     }
 
+    //$_rbox_$_modify_$_martin.cheng_$_begin for configure more keys panel
+    private SharedPreferences mPrefs;
+
+    public SharedPreferences getPreferences() {
+        return mPrefs;
+    }
+
     public MainKeyboardView(final Context context, final AttributeSet attrs, final int defStyle) {
         super(context, attrs, defStyle);
 
@@ -502,6 +576,7 @@ public final class MainKeyboardView extends KeyboardView implements PointerTrack
         mPreviewPlacerView.addPreview(mSlidingKeyInputPreview);
         mainKeyboardViewAttr.recycle();
 
+        mPrefs = PreferenceManager.getDefaultSharedPreferences(context);//add by Martin.Cheng
         mMoreKeysKeyboardContainer = LayoutInflater.from(getContext())
                 .inflate(moreKeysKeyboardLayoutId, null);
         mLanguageOnSpacebarFadeoutAnimator = loadObjectAnimator(
@@ -516,6 +591,7 @@ public final class MainKeyboardView extends KeyboardView implements PointerTrack
         mLanguageOnSpacebarHorizontalMargin =
                 (int) getResources().getDimension(R.dimen.language_on_spacebar_horizontal_margin);
     }
+//$_rbox_$_modify_$_martin.cheng_end_$
 
     @Override
     public void setHardwareAcceleratedDrawingEnabled(final boolean enabled) {
@@ -903,6 +979,20 @@ public final class MainKeyboardView extends KeyboardView implements PointerTrack
         }
     }
 
+    private void openMoreKeysKeyboardIfRequired(final Key parentKey,
+            final PointerTracker tracker) {
+        // Check if we have a popup layout specified first.
+        if (mMoreKeysLayout == 0) {
+            return ;
+        }
+
+        // Check if we are already displaying popup panel.
+        if (mMoreKeysPanel != null)
+            return ;
+        onLongPress(tracker);
+    }
+
+
     private MoreKeysPanel onCreateMoreKeysPanel(final Key key, final Context context) {
         if (key.getMoreKeys() == null) {
             return null;
@@ -921,6 +1011,7 @@ public final class MainKeyboardView extends KeyboardView implements PointerTrack
         container.measure(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         return moreKeysKeyboardView;
     }
+
 
     /**
      * Called when a key is long pressed.
@@ -960,6 +1051,11 @@ public final class MainKeyboardView extends KeyboardView implements PointerTrack
     }
 
     private void openMoreKeysPanel(final Key key, final PointerTracker tracker) {
+        //$_rbox_$_modify_$_martin.cheng_$_begin for initializing focus of mini-keyboard
+        if(!Settings.isMoreKeysPanelEnabled(mPrefs, getResources()))
+            return ;
+        //$_rbox_$_modify_$_martin.cheng_$_end
+
         final MoreKeysPanel moreKeysPanel = onCreateMoreKeysPanel(key, getContext());
         if (moreKeysPanel == null) {
             return;
@@ -982,8 +1078,11 @@ public final class MainKeyboardView extends KeyboardView implements PointerTrack
         final int pointY = key.getY() + mKeyPreviewDrawParams.mPreviewVisibleOffset;
         moreKeysPanel.showMoreKeysPanel(this, this, pointX, pointY, mKeyboardActionListener);
         tracker.onShowMoreKeysPanel(moreKeysPanel);
+        //$_rbox_$_modify_$_martin.cheng_$_begin for initializing focus of mini-keyboard
+        tracker.onMoveEvent(0, 0, SystemClock.uptimeMillis(),null);
+        //$_rbox_$_modify_$_martin.cheng_$_end
     }
-
+	
     public boolean isInSlidingKeyInput() {
         if (isShowingMoreKeysPanel()) {
             return true;
@@ -1041,6 +1140,182 @@ public final class MainKeyboardView extends KeyboardView implements PointerTrack
         return super.dispatchTouchEvent(event);
     }
 
+//$_rbox_$_modify_$_martin.cheng_$_begin modified for TV Key
+    private int m_iIndexCurKey =-1;
+    private int m_iKeyCount =0;
+    private int m_MoreKeysPanelIndex = 0;
+    public boolean mIsRemoteCtrl = false;
+
+    public int GetTouchEventStatus(){
+        return m_iIndexCurKey;
+    }
+
+    public void SendKeyEvent2Touch(int keyCode){
+        mIsRemoteCtrl = true;
+        int action =MotionEvent.ACTION_DOWN;
+        List<Key> keys = null;
+        int index = 0;
+        if(mMoreKeysPanel!=null){
+            keys = ((MoreKeysKeyboardView)mMoreKeysPanel).getKeyDetector().getKeyboard().mKeyList;
+            index = m_MoreKeysPanelIndex;
+            action =MotionEvent.ACTION_MOVE;
+        }else{
+            keys = getKeyboard().mKeyList;
+            index = m_iIndexCurKey;
+        }
+        m_iKeyCount =keys.size();
+        Log.d(TAG,"##----- keycout = "+m_iKeyCount+" ------@@@ ");
+        MotionEvent me_temp;
+        int x;
+        int y;
+        boolean hideMoreKeysPanel = false;
+        switch (keyCode){
+            case KeyEvent.KEYCODE_DPAD_RIGHT:
+                index++;
+                if(index >=m_iKeyCount){
+                    index =0;
+                    hideMoreKeysPanel = true;
+                }
+                break;
+            case KeyEvent.KEYCODE_DPAD_LEFT:
+                index --;
+                if(index <0){
+                    index =m_iKeyCount -1;
+                    hideMoreKeysPanel = true;
+                }
+                break;
+            case KeyEvent.KEYCODE_DPAD_UP:
+                if(index >=0){
+                    y =keys.get(index).mY;
+                    x =keys.get(index).mX;
+                    if(y ==keys.get(0).mY){
+                        hideMoreKeysPanel = true;
+                        break;//return ;
+                    }
+                    x += mMoreKeysPanel!=null ? 0 : keys.get(index).mWidth;//+keys.get(m_iIndexCurKey).mHorizontalGap);
+                    y -=(keys.get(index).mHeight+keys.get(index).mVerticalGap);
+                    int tmpIndex = index;
+                    index =FindKeyIndex(keys,x,y);
+                    if(index==-1)
+                        index =FindKeyIndex(keys,x-keys.get(tmpIndex).mWidth/2,y);
+                }
+                break;
+            case KeyEvent.KEYCODE_DPAD_DOWN:
+                if(index >=0){
+                    y =keys.get(index).mY;
+                    x =keys.get(index).mX;
+                    if(y == keys.get(m_iKeyCount-1).mY){
+                        hideMoreKeysPanel = true;
+                        break;//return ;
+                    }
+                    x += mMoreKeysPanel!=null ? 0 :  mMoreKeysPanel!=null ? 0 : keys.get(index).mWidth;
+                    y +=(keys.get(index).mHeight+keys.get(index).mVerticalGap);
+                    int tmpIndex = index;
+                    index =FindKeyIndex(keys,x,y);
+                    if(index==-1)
+                        index =FindKeyIndex(keys,x-keys.get(tmpIndex).mWidth/2,y);
+                }
+                break;
+            case KeyEvent.KEYCODE_ENTER:
+            case KeyEvent.KEYCODE_DPAD_CENTER:
+                if(index ==-1)
+                    return ;
+                action =MotionEvent.ACTION_UP;
+                hideMoreKeysPanel = true;
+                break;
+            default:
+                mIsRemoteCtrl = false;
+                return ;
+        }
+
+        if(index <0)
+            index =0;
+
+        x =keys.get(index).mX;
+        x +=keys.get(index).mWidth/2;
+        y =keys.get(index).mY;
+        y +=keys.get(index).mHeight/2;
+        Log.i(TAG, "######## index="+index+", y= "+y+" x ="+x);
+
+        if (true)
+            Log.i(TAG, "######## index="+index+"---action ="+action+"---code ="+keys.get(index).mCode);
+
+        if(mMoreKeysPanel!=null){
+            me_temp = MotionEvent.obtain(SystemClock.uptimeMillis(),
+                        SystemClock.uptimeMillis(),action,x, y, 0);
+            onTouchEvent(me_temp);
+
+            m_MoreKeysPanelIndex = index;
+            Log.i(TAG, "SendKeyEvent2Touch  miniKeyboard is not null.. index="+index+", x="+x+",y="+y+"  keyCode ="+keyCode);
+            if(hideMoreKeysPanel){
+                if(mMoreKeysPanel!=null)
+                    ((MoreKeysKeyboardView)mMoreKeysPanel).dismissMoreKeysPanel();
+                if(m_iIndexCurKey>=0){//refocus on the father key
+                    index = m_iIndexCurKey;
+                    x =getKeyboard().mKeyList.get(index).mX;
+                    x +=getKeyboard().mKeyList.get(index).mWidth/2;
+                    y =getKeyboard().mKeyList.get(index).mY;
+                    y +=getKeyboard().mKeyList.get(index).mHeight/2;
+                    Log.i(TAG, "######## index="+index+", y= "+y+" x ="+x);
+
+                    if (true)
+                        Log.i(TAG, "######## index="+index+"---action ="+action+"---code ="+getKeyboard().mKeyList.get(index).mCode);
+                    action =MotionEvent.ACTION_DOWN;
+                    me_temp = MotionEvent.obtain(SystemClock.uptimeMillis(),
+                        SystemClock.uptimeMillis(),action,x, y, 0);
+                    onTouchEvent(me_temp);
+                }
+                m_MoreKeysPanelIndex = 0;
+            }
+        }else{
+            me_temp = MotionEvent.obtain(SystemClock.uptimeMillis(),
+                        SystemClock.uptimeMillis(),action,x, y, 0);
+            onTouchEvent(me_temp);
+
+            m_iIndexCurKey = index;
+
+            Log.i(TAG, "SendKeyEvent2Touch  m_iIndexCurKey="+m_iIndexCurKey
+                +" m_iKeyCount ="+m_iKeyCount+" keyCode ="+keyCode);
+
+            if(action ==MotionEvent.ACTION_UP ){
+                SystemClock.sleep(100);
+                m_iIndexCurKey = FindKeyIndex(keys,x,y);
+                action = MotionEvent.ACTION_DOWN;
+                me_temp = MotionEvent.obtain(SystemClock.uptimeMillis(),
+                            SystemClock.uptimeMillis(),action,x, y, 0);
+                onTouchEvent(me_temp);
+            }
+        }
+        mIsRemoteCtrl = false;
+        return ;
+    }
+
+    public void resetIrKeyState(){
+        m_iIndexCurKey = -1;
+        m_MoreKeysPanelIndex = 0;
+        m_iKeyCount = 0;
+    }
+    private int FindKeyIndex(List<Key> keys, int x, int y) {
+        int x1,y1;
+        int len,height,lgap,hgap;
+        m_iKeyCount =keys.size();
+        Log.i(TAG,"x = "+x+" y ="+y);
+        // Get the keys on this keyboard
+        for (int i = 0; i < keys.size(); i++){
+            x1 =keys.get(i).mX;
+            y1 =keys.get(i).mY;
+            len =keys.get(i).mWidth;
+            lgap=keys.get(i).mHorizontalGap;
+            height =keys.get(i).mHeight;
+            hgap=keys.get(i).mVerticalGap;
+            Log.i(TAG,"i ="+i+" x1 = "+x1+" y1 ="+y1+" len = "+len+" height= "+height+" lgap = "+lgap+" hgap= "+hgap);
+            if((x>=x1) && x<(x1+len+lgap) &&(y>=y1)&& y<(y1+height))
+                return i;
+        }
+        return -1;
+    }
+//$_rbox_$_modify_$_martin.cheng_$_end
+
     @Override
     public boolean onTouchEvent(final MotionEvent me) {
         if (getKeyboard() == null) {
@@ -1087,6 +1362,9 @@ public final class MainKeyboardView extends KeyboardView implements PointerTrack
     public void closing() {
         cancelAllOngoingEvents();
         mMoreKeysKeyboardCache.clear();
+//$_rbox_$_modify_$_martin.cheng_$_begin_$ to upport remote-ctrl
+        resetIrKeyState();
+//$_rbox_$_modify_$_martin.cheng_$_end_$
     }
 
     /**
