@@ -1,3 +1,4 @@
+/* $_FOR_ROCKCHIP_RBOX_$*/
 /*
  * Copyright (C) 2011 The Android Open Source Project
  *
@@ -286,7 +287,7 @@ public final class MainKeyboardView extends KeyboardView implements PointerTrack
 	    cancelLongPressTimer();
 	    final int delay;
 	    switch (code) {
-	      case Keyboard.CODE_SHIFT:
+	      case Constants.CODE_SHIFT:
 		    delay = mLongPressShiftKeyTimeout;
 		  break;
 	      default:
@@ -307,7 +308,7 @@ public final class MainKeyboardView extends KeyboardView implements PointerTrack
             }
             final Key key = tracker.getKey();
             switch (key.mCode) {
-            case Keyboard.CODE_SHIFT:
+            case Constants.CODE_SHIFT:
                 delay = mLongPressShiftKeyTimeout;
                 break;
             default:
@@ -1360,11 +1361,11 @@ public final class MainKeyboardView extends KeyboardView implements PointerTrack
     }
 
     public void closing() {
-        cancelAllOngoingEvents();
-        mMoreKeysKeyboardCache.clear();
 //$_rbox_$_modify_$_martin.cheng_$_begin_$ to upport remote-ctrl
         resetIrKeyState();
 //$_rbox_$_modify_$_martin.cheng_$_end_$
+        cancelAllOngoingEvents();
+        mMoreKeysKeyboardCache.clear();
     }
 
     /**

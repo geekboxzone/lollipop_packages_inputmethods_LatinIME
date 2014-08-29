@@ -418,9 +418,9 @@ public final class KeyboardState {
 
     public void onLongPressTimeout(int code) {
         if (DEBUG_EVENT) {
-            Log.d(TAG, "onLongPressTimeout: code=" + Keyboard.printableCode(code) + " " + this);
+            Log.d(TAG, "onLongPressTimeout: code=" + Constants.printableCode(code) + " " + this);
         }
-        if (mIsAlphabetMode && code == Keyboard.CODE_SHIFT) {
+        if (mIsAlphabetMode && code == Constants.CODE_SHIFT) {
             mLongPressShiftLockFired = true;
             mSwitchActions.hapticAndAudioFeedback(code);
         }

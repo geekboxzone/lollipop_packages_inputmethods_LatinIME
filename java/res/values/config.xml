@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--$_FOR_ROCKCHIP_RBOX_$-->
 <!--
 /*
 **
@@ -20,7 +21,9 @@
 
 <resources>
     <bool name="config_use_fullscreen_mode">false</bool>
+<!--$_rbox_$_modify_$_lijiehong:_begin_$ add by lijiehong to support configure more keys panel-->
     <bool name="config_default_show_more_keys_panel">false</bool>
+<!--$_rbox_$_modify_$_lijiehong:_end_$change by lijiehong-->
     <bool name="config_enable_show_voice_key_option">true</bool>
     <bool name="config_enable_show_option_of_key_preview_popup">true</bool>
     <!-- TODO: Disable the following configuration for production. -->

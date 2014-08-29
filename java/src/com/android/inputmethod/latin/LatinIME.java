@@ -1,3 +1,4 @@
+/* $_FOR_ROCKCHIP_RBOX_$*/
 /*
  * Copyright (C) 2008 The Android Open Source Project
  *
@@ -1420,7 +1421,6 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
                     inputView.resetIrKeyState();
                 }else{
                     inputView.SendKeyEvent2Touch(keyCode);
-					super.onKeyUp(keyCode, event);
                     return true;
                 }
             }

@@ -1,3 +1,4 @@
+/* $_FOR_ROCKCHIP_RBOX_$*/
 /*
  * Copyright (C) 2010 The Android Open Source Project
  *
@@ -16,10 +17,10 @@
 
 package com.android.inputmethod.keyboard;
 
-import static com.android.inputmethod.keyboard.Keyboard.CODE_OUTPUT_TEXT;
-import static com.android.inputmethod.keyboard.Keyboard.CODE_SHIFT;
-import static com.android.inputmethod.keyboard.Keyboard.CODE_SWITCH_ALPHA_SYMBOL;
-import static com.android.inputmethod.keyboard.Keyboard.CODE_UNSPECIFIED;
+import static com.android.inputmethod.latin.Constants.CODE_OUTPUT_TEXT;
+import static com.android.inputmethod.latin.Constants.CODE_SHIFT;
+import static com.android.inputmethod.latin.Constants.CODE_SWITCH_ALPHA_SYMBOL;
+import static com.android.inputmethod.latin.Constants.CODE_UNSPECIFIED;
 import static com.android.inputmethod.keyboard.internal.KeyboardIconsSet.ICON_UNDEFINED;
 
 import android.content.res.Resources;

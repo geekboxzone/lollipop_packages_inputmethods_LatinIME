@@ -1,3 +1,4 @@
+/* $_FOR_ROCKCHIP_RBOX_$*/
 /*
  * Copyright (C) 2010 The Android Open Source Project
  *
@@ -101,8 +102,10 @@ public final class PointerTracker implements PointerTrackerQueue.Element {
         public void startTypingStateTimer(Key typedKey);
         public boolean isTypingState();
         public void startKeyRepeatTimer(PointerTracker tracker);
+//$_rbox_$_modify_$_lijiehong:_begin_$ add by lijiehong to support remote-ctrl
         public void startLongPressTimer(PointerTracker tracker, int delay);
-		public void startLongPressTimer(int code);
+//$_rbox_$_modify_$_lijiehong:_end_$ add by lijiehong to support remote-ctrl
+        public void startLongPressTimer(int code);
         public void cancelLongPressTimer();
         public void startDoubleTapShiftKeyTimer();
         public void cancelDoubleTapShiftKeyTimer();
@@ -119,9 +122,11 @@ public final class PointerTracker implements PointerTrackerQueue.Element {
             public boolean isTypingState() { return false; }
             @Override
             public void startKeyRepeatTimer(PointerTracker tracker) {}
+//$_rbox_$_modify_$_lijiehong:_begin_$ add by lijiehong to support remote-ctrl
             @Override
             public void startLongPressTimer(PointerTracker tracker, int delay) {}
-			@Override
+//$_rbox_$_modify_$_lijiehong:_end_$ add by lijiehong to support remote-ctrl
+            @Override
             public void startLongPressTimer(int code) {}
             @Override
             public void cancelLongPressTimer() {}
@@ -920,6 +925,21 @@ public final class PointerTracker implements PointerTrackerQueue.Element {
         if (DEBUG_EVENT) {
             printTouchEvent("onDownEvent:", x, y, eventTime);
         }
+		
+//$_rbox_$_modify_$_lijiehong:_begin_$ add by lijiehong for releasing old key and change some key actions
+        Log.d(TAG,"-------- release old key ---------------");
+        final Key newKey = getKeyOn(x, y);
+        if(newKey!=null && mCurrentKey!=null){
+            if(!mCurrentKey.equals(newKey)){
+                setReleasedKeyGraphics(mCurrentKey);
+                if(newKey.mCode==Constants.CODE_DELETE || newKey.mCode==Constants.CODE_SHIFT
+                    || newKey.mCode==Constants.CODE_SWITCH_ALPHA_SYMBOL){
+                    onDownEventInternal(x, y, eventTime);
+                    return;
+                }
+            }
+        }
+//$_rbox_$_modify_$_lijiehong:_end_$ add by lijiehong
         setKeyEventHandler(handler);
         // Naive up-to-down noise filter.
         final long deltaT = eventTime - mUpTime;
@@ -985,15 +1005,21 @@ public final class PointerTracker implements PointerTrackerQueue.Element {
         mIsTrackingForActionDisabled = false;
         resetSlidingKeyInput();
         if (key != null) {
+//$_rbox_$_modify_$_lijiehong:_begin_$ add by lijiehong , ignore repeat delete key, do not process shift key and symbol switch key on key down
             // This onPress call may have changed keyboard layout. Those cases are detected at
             // {@link #setKeyboard}. In those cases, we should update key according to the new
             // keyboard layout.
-            if (callListenerOnPressAndCheckKeyboardLayoutChange(key, 0 /* repeatCount */)) {
-                key = onDownKey(x, y, eventTime);
+            if(key.mCode==Constants.CODE_DELETE || key.mCode==Constants.CODE_SHIFT
+                || key.mCode==Constants.CODE_SWITCH_ALPHA_SYMBOL){
+                Log.d(TAG,"----- ignore repeat delete key -----");
+            }else{
+                if (callListenerOnPressAndCheckKeyboardLayoutChange(key, 0 /* repeatCount */)) {
+                    key = onDownKey(x, y, eventTime);
+                }
+                startRepeatKey(key);
+                startLongPressTimer(key);
             }
-
-            startRepeatKey(key);
-            startLongPressTimer(key);
+//$_rbox_$_modify_$_lijiehong:_end_$ add by lijiehong
             setPressedKeyGraphics(key, eventTime);
         }
     }
@@ -1261,12 +1287,23 @@ public final class PointerTracker implements PointerTrackerQueue.Element {
     }
 
     private void onUpEventInternal(final int x, final int y, final long eventTime) {
+//$_rbox_$_modify_$_lijiehong: begin change by lijiehong , do process shift key and symbol switch key on keyUp
+        final Key currentKey = mCurrentKey;
+        if(mCurrentKey!=null){
+            setReleasedKeyGraphics(mCurrentKey);
+            if(mCurrentKey.mCode==Constants.CODE_SHIFT
+                || mCurrentKey.mCode==Constants.CODE_SWITCH_ALPHA_SYMBOL){
+                callListenerOnPressAndCheckKeyboardLayoutChange(mCurrentKey, 0);
+                startRepeatKey(mCurrentKey);
+            }
+        }
+//$_rbox_$_modify_$ end lijiehong
         mTimerProxy.cancelKeyTimers();
         final boolean isInSlidingKeyInput = mIsInSlidingKeyInput;
         final boolean isInSlidingKeyInputFromModifier = mIsInSlidingKeyInputFromModifier;
         resetSlidingKeyInput();
         mIsDetectingGesture = false;
-        final Key currentKey = mCurrentKey;
+        //final Key currentKey = mCurrentKey;
         mCurrentKey = null;
         final int currentRepeatingKeyCode = mCurrentRepeatingKeyCode;
         mCurrentRepeatingKeyCode = Constants.NOT_A_CODE;
