@@ -888,6 +888,8 @@ public final class PointerTracker implements PointerTrackerQueue.Element {
         mListener.onCancelBatchInput();
     }
 
+    public final KeyboardSwitcher mKeyboardSwitcher = KeyboardSwitcher.getInstance();
+
     public void processMotionEvent(final MotionEvent me, final KeyEventHandler handler) {
         final int action = me.getActionMasked();
         final long eventTime = me.getEventTime();
@@ -905,14 +907,22 @@ public final class PointerTracker implements PointerTrackerQueue.Element {
         final int index = me.getActionIndex();
         final int x = (int)me.getX(index);
         final int y = (int)me.getY(index);
+        boolean bool = mKeyboardSwitcher.getMainKeyboardView().GetKeyCenterStatus();
         switch (action) {
         case MotionEvent.ACTION_DOWN:
         case MotionEvent.ACTION_POINTER_DOWN:
             onDownEvent(x, y, eventTime, handler);
+            if(getKeyOn(x, y).mCode==Constants.CODE_SHIFT && bool){
+              SystemClock.sleep(100);
+              Log.d(TAG,"ACTION_POINTER_DOWN------");
+              onDownEvent(x, y, eventTime, handler);
+            }
             break;
         case MotionEvent.ACTION_UP:
         case MotionEvent.ACTION_POINTER_UP:
             onUpEvent(x, y, eventTime);
+        //    if(getKeyOn(x, y).mCode==Constants.CODE_SHIFT)
+        //    onUpEvent(x, y, eventTime);
             break;
         case MotionEvent.ACTION_CANCEL:
             onCancelEvent(x, y, eventTime);

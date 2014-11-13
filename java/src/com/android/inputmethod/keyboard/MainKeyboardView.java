@@ -1146,9 +1146,14 @@ public final class MainKeyboardView extends KeyboardView implements PointerTrack
     private int m_iKeyCount =0;
     private int m_MoreKeysPanelIndex = 0;
     public boolean mIsRemoteCtrl = false;
+    public boolean mIsKeyCenter = false;
 
     public int GetTouchEventStatus(){
         return m_iIndexCurKey;
+    }
+ 
+    public boolean GetKeyCenterStatus(){
+        return mIsKeyCenter;
     }
 
     public void SendKeyEvent2Touch(int keyCode){
@@ -1172,6 +1177,7 @@ public final class MainKeyboardView extends KeyboardView implements PointerTrack
         boolean hideMoreKeysPanel = false;
         switch (keyCode){
             case KeyEvent.KEYCODE_DPAD_RIGHT:
+                mIsKeyCenter = false;
                 index++;
                 if(index >=m_iKeyCount){
                     index =0;
@@ -1179,6 +1185,7 @@ public final class MainKeyboardView extends KeyboardView implements PointerTrack
                 }
                 break;
             case KeyEvent.KEYCODE_DPAD_LEFT:
+                mIsKeyCenter = false;
                 index --;
                 if(index <0){
                     index =m_iKeyCount -1;
@@ -1186,6 +1193,7 @@ public final class MainKeyboardView extends KeyboardView implements PointerTrack
                 }
                 break;
             case KeyEvent.KEYCODE_DPAD_UP:
+                mIsKeyCenter = false;
                 if(index >=0){
                     y =keys.get(index).mY;
                     x =keys.get(index).mX;
@@ -1202,6 +1210,7 @@ public final class MainKeyboardView extends KeyboardView implements PointerTrack
                 }
                 break;
             case KeyEvent.KEYCODE_DPAD_DOWN:
+                mIsKeyCenter = false;
                 if(index >=0){
                     y =keys.get(index).mY;
                     x =keys.get(index).mX;
@@ -1221,11 +1230,13 @@ public final class MainKeyboardView extends KeyboardView implements PointerTrack
             case KeyEvent.KEYCODE_DPAD_CENTER:
                 if(index ==-1)
                     return ;
+                mIsKeyCenter = true;
                 action =MotionEvent.ACTION_UP;
                 hideMoreKeysPanel = true;
                 break;
             default:
                 mIsRemoteCtrl = false;
+                mIsKeyCenter = false;
                 return ;
         }
 
